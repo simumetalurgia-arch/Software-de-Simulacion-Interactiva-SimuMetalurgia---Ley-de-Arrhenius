@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimuMetalurgia © |Software de simulación de la Ley de Arrhenius</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #1a237e;
+            --secondary: #303f9f;
+            --accent: #00e5ff;
+            --bg: #f8f9fa;
+            --text: #2c3e50;
+            --white: #ffffff;
+            --success: #4caf50;
+            --danger: #ff5252;
+            --code-bg: #1e1e1e;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: var(--bg); color: var(--text); scroll-behavior: smooth; }
+        header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 30px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .credits { font-size: 0.9em; margin-top: 10px; opacity: 0.9; background: rgba(255,255,255,0.15); display: inline-block; padding: 6px 18px; border-radius: 25px; }
+        
+        nav { display: flex; justify-content: center; gap: 12px; margin: 25px 0; position: sticky; top: 0; z-index: 1000; background: var(--bg); padding: 10px 0; }
+        nav button { padding: 12px 24px; border: none; border-radius: 25px; background: white; color: var(--primary); font-weight: bold; cursor: pointer; transition: 0.3s; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+        nav button:hover { background: var(--primary); color: white; transform: translateY(-2px); }
+
+        .section { display: none; width: 92%; max-width: 1200px; margin: 0 auto 60px auto; background: var(--white); padding: 45px; border-radius: 25px; box-shadow: 0 15px 40px rgba(0,0,0,0.06); }
+        .active { display: block; }
+
+        /* INICIO Y TABLA DE CONTENIDO */
+        .hero-section { text-align: center; padding: 40px 0 20px 0; }
+        .hero-title { font-size: 3.2em; color: var(--primary); margin-bottom: 15px; font-weight: 800; }
+        .hero-subtitle { font-size: 1.3em; color: #666; max-width: 750px; margin: 0 auto 40px auto; }
+        .main-nav-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; max-width: 900px; margin: 0 auto; }
+        .nav-card { background: var(--white); padding: 35px; border-radius: 20px; border: 1px solid #eee; transition: 0.4s; cursor: pointer; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.04); }
+        .nav-card:hover { transform: translateY(-10px); box-shadow: 0 12px 30px rgba(0,0,0,0.1); border-color: var(--accent); }
+        .nav-card h3 { color: var(--primary); margin-bottom: 10px; font-size: 1.5em; }
+
+        .toc-container { background: #fff; padding: 40px; border-radius: 20px; box-shadow: inset 0 0 20px rgba(0,0,0,0.02); border: 1px solid #eee; margin-top: 50px; text-align: left; border-top: 8px solid var(--accent); }
+        .toc-title { color: var(--primary); text-align: center; font-size: 2em; margin-top: 0; margin-bottom: 30px; }
+        .toc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 40px; }
+        .toc-column h4 { color: var(--secondary); font-size: 1.3em; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; margin-top: 0; }
+        .toc-list { list-style: none; padding: 0; margin: 0; }
+        .toc-list li { margin-bottom: 12px; font-size: 0.95em; position: relative; padding-left: 20px; color: #555; cursor: pointer; transition: 0.2s; font-weight: 500; }
+        .toc-list li::before { content: '▸'; position: absolute; left: 0; color: var(--accent); font-weight: bold; font-size: 1.2em; line-height: 1; }
+        .toc-list li:hover { color: var(--primary); transform: translateX(5px); }
+
+        /* SIMULADOR */
+        .app-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 30px; }
+        .input-card { background: #f1f4f9; padding: 25px; border-radius: 15px; border: 1px solid #e1e8ed; margin-bottom: 20px; }
+        .input-group { margin-bottom: 18px; display: flex; flex-direction: column; }
+        label { font-weight: 700; margin-bottom: 5px; color: var(--primary); font-size: 0.9em; }
+        input, select { padding: 12px; border: 1px solid #ccc; border-radius: 8px; outline: none; transition: 0.3s; font-size: 1em; }
+        .viz-container { background: #0a0a0a; border-radius: 12px; height: 260px; position: relative; overflow: hidden; border: 4px solid #333; }
+        .floor { position: absolute; bottom: 0; height: 45px; background: #222; z-index: 1; border-top: 2px solid #444; }
+        .energy-barrier { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 130px; background: linear-gradient(to top, #333, #666); border-top-left-radius: 65px; border-top-right-radius: 65px; z-index: 2; transition: height 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .q-line { position: absolute; left: 35%; right: 35%; border-top: 3px dashed var(--danger); z-index: 3; transition: bottom 0.6s; }
+        .q-line::after { content: "Barrera Q"; color: var(--danger); font-size: 11px; font-weight: bold; position: absolute; top: -18px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+        #atom-main { position: absolute; width: 18px; height: 18px; background: var(--accent); border-radius: 50%; left: 15%; bottom: 45px; box-shadow: 0 0 20px var(--accent); z-index: 4; }
+        .prob-container { margin-top: 15px; background: #eee; height: 14px; border-radius: 7px; overflow: hidden; }
+        #prob-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.6s; }
+        .btn-main { background: var(--primary); color: white; padding: 18px; border: none; border-radius: 10px; font-weight: bold; font-size: 1.1em; width: 100%; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-main:hover { background: #000; transform: translateY(-2px); }
+        .result-box { background: #e0f7fa; padding: 18px; border-radius: 10px; border-left: 8px solid var(--accent); margin-top: 15px; text-align: center; font-weight: bold; }
+        .chart-wrapper { position: relative; height: 320px; width: 100%; }
+        .interactive-controls { display: flex; gap: 10px; justify-content: center; margin-top: 15px; background: #f9f9f9; padding: 12px; border-radius: 8px; border: 1px solid #ddd; }
+        .interactive-controls input { width: 120px; text-align: center; background: white; font-weight: bold; color: var(--primary); }
+
+        /* NAVEGACIÓN DE TEORÍA */
+        .theory-grid-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 35px; }
+        .theory-btn { padding: 14px; border: 1px solid #ddd; border-radius: 10px; background: #fff; cursor: pointer; transition: 0.3s; text-align: left; font-size: 0.9em; font-weight: bold; color: var(--primary); border-left: 5px solid #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .theory-btn:hover { border-left-color: var(--accent); background: #f5f8ff; transform: translateY(-2px); }
+        .theory-btn.active-item { background: var(--primary); color: white; border-left-color: var(--accent); box-shadow: 0 4px 10px rgba(26, 35, 126, 0.3); }
+
+        /* ÁREA DE VISUALIZACIÓN DE TEORÍA */
+        .theory-display-area { border: 1px solid #eee; padding: 40px; border-radius: 20px; background: #fff; min-height: 400px; box-shadow: inset 0 0 20px rgba(0,0,0,0.02); }
+        .theory-item { display: none; animation: fadeIn 0.4s ease-out; line-height: 1.8; }
+        .theory-item.show { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ESTILOS INTERNOS DE LA TEORÍA */
+        .theory-item h3 { color: var(--primary); font-size: 2em; margin-top: 0; margin-bottom: 20px; border-bottom: 2px solid var(--accent); display: inline-block; padding-bottom: 5px; }
+        .theory-item h4 { color: var(--secondary); font-size: 1.3em; margin-top: 25px; }
+        .theory-formula { background: var(--code-bg); color: #00e5ff; padding: 25px; border-radius: 12px; text-align: center; font-size: 2.2em; font-family: 'Times New Roman', serif; margin: 25px 0; box-shadow: inset 0 0 10px rgba(0,0,0,0.5); }
+        .theory-table { width: 100%; border-collapse: collapse; margin: 20px 0; border: 1px solid #e0e0e0; }
+        .theory-table th { background: var(--primary); color: white; padding: 12px; text-align: left; }
+        .theory-table td { padding: 12px; border-bottom: 1px solid #eee; }
+        .theory-table tr:hover { background-color: #f9f9f9; }
+
+        /* MANUAL ROBUSTO */
+        .manual-section-box { margin-bottom: 40px; }
+        .manual-step-card { background: #ffffff; border: 1px solid #e0e0e0; border-radius: 20px; padding: 35px; margin-top: 25px; border-left: 8px solid var(--accent); box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+        .manual-step-card h4 { color: var(--primary); font-size: 1.6em; margin-top: 0; display: flex; align-items: center; gap: 15px; }
+        .manual-step-card h4 span { background: var(--primary); color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7em; }
+        .pro-instruction { background: #e3f2fd; padding: 15px; border-radius: 10px; border-left: 4px solid #2196f3; margin: 15px 0; font-size: 0.95em; color: #0d47a1; }
+        .warning-instruction { background: #fff3e0; padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800; margin: 15px 0; font-size: 0.95em; color: #e65100; font-weight: 500; }
+
+        @media (max-width: 900px) { .app-grid { grid-template-columns: 1fr; } .main-nav-grid { grid-template-columns: 1fr; } .theory-grid-nav { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .theory-grid-nav { grid-template-columns: 1fr; } .toc-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1> Software de Simulación y Aprendizaje <br> Ley de Arrhenius</h1>
+</header>
+
+<nav>
+    <button onclick="showSection('inicio')">Inicio</button>
+    <button onclick="showSection('calc')">Simulador</button>
+    <button onclick="showSection('theory')">Teoría Profunda</button>
+    <button onclick="showSection('manual')">Manual de Operación</button>
+</nav>
+
+<div id="inicio" class="section active">
+    <div class="hero-section">
+        <h2 class="hero-title">Física del Estado Sólido</h2>
+        <p class="hero-subtitle">Módulo integral para el estudio de la dependencia térmica y la energía de activación en sistemas de ingeniería.</p>
+        
+        <div class="main-nav-grid">
+            <div class="nav-card" onclick="showSection('calc')"><h3> Simulador</h3><p>Cálculos y vibración atómica en tiempo real.</p></div>
+            <div class="nav-card" onclick="showSection('theory')"><h3> Teoría</h3><p>Tratado profundo y enciclopédico interactivo.</p></div>
+            <div class="nav-card" onclick="showSection('manual')"><h3> Manual</h3><p>Guía para el uso técnico y científico del software.</p></div>
+        </div>
+
+        <div class="toc-container">
+            <h3 class="toc-title">Índice General del Módulo</h3>
+            <div class="toc-grid">
+                
+                <div class="toc-column">
+                    <h4> 1. Simulador Interactivo</h4>
+                    <ul class="toc-list">
+                        <li onclick="showSection('calc')">Configuración del Contexto Científico</li>
+                        <li onclick="showSection('calc')">Cálculo de Incógnita Dinámica</li>
+                        <li onclick="showSection('calc')">Microscopio de Energía Dinámica</li>
+                        <li onclick="showSection('calc')">Gráfica de Dependencia Térmica</li>
+                        <li onclick="showSection('calc')">Herramienta de Sensibilidad (Probe)</li>
+                    </ul>
+                </div>
+
+                <div class="toc-column">
+                    <h4> 2. Teoría Profunda</h4>
+                    <ul class="toc-list">
+                        <li onclick="showSection('theory'); showTheory(1)">I. Fundamentos Térmicos</li>
+                        <li onclick="showSection('theory'); showTheory(2)">II. Estado de Transición y Q</li>
+                        <li onclick="showSection('theory'); showTheory(3)">III. La Ecuación Maestra</li>
+                        <li onclick="showSection('theory'); showTheory(4)">IV. Termodinámica: Vacancias</li>
+                        <li onclick="showSection('theory'); showTheory(5)">V. Difusividad de Solutos</li>
+                        <li onclick="showSection('theory'); showTheory(6)">VI. Cinética Química</li>
+                        <li onclick="showSection('theory'); showTheory(7)">VII. Constante de Boltzmann</li>
+                        <li onclick="showSection('theory'); showTheory(8)">VIII. Linealización ln(k) vs 1/T</li>
+                        <li onclick="showSection('theory'); showTheory(9)">IX. Estructura BCC vs FCC</li>
+                        <li onclick="showSection('theory'); showTheory(10)">X. Mecanismos de Difusión</li>
+                        <li onclick="showSection('theory'); showTheory(11)">XI. Catálisis y Energía</li>
+                        <li onclick="showSection('theory'); showTheory(12)">XII. Efecto Túnel Cuántico</li>
+                    </ul>
+                </div>
+
+                <div class="toc-column">
+                    <h4> 3. Manual de Operación</h4>
+                    <ul class="toc-list">
+                        <li onclick="showSection('manual')">1. Configuración de Dominio</li>
+                        <li onclick="showSection('manual')">2. Método de Resolución (Incógnita)</li>
+                        <li onclick="showSection('manual')">3. Rigor en Notación y Constantes</li>
+                        <li onclick="showSection('manual')">4. Interpretación de la Vibración</li>
+                        <li onclick="showSection('manual')">5. Análisis Predictivo (Gráfica)</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="calc" class="section">
+    <div class="app-grid">
+        <div class="input-card">
+            <h3 style="margin-top: 0; color: var(--primary); text-align: center;">Parámetros del Sistema</h3>
+            <div class="input-group"><label>Contexto:</label><select id="context" onchange="updateContext()"><option value="metal">Metalurgia (Vacancias / Difusión)</option><option value="chem">Cinética Química (Reacciones)</option></select></div>
+            <div class="input-group"><label>Incógnita a calcular:</label><select id="unknown" onchange="updateUI()"><option value="k">Velocidad / Concentración (k o N)</option><option value="A">Factor de Frecuencia (A o N₀)</option><option value="Q">Energía de Activación (Q)</option><option value="T">Temperatura (T)</option></select></div>
+            <div id="group-k" class="input-group" style="display:none;"><label id="label-k">Resultado k/N:</label><input type="text" id="val-k"></div>
+            <div id="group-A" class="input-group"><label id="label-A">Sitios Totales (N₀):</label><input type="text" id="val-A" placeholder="Ej: 8e28"></div>
+            <div id="group-Q" class="input-group"><label>Energía de Activación (Q):</label><div style="display:flex; gap:5px;"><input type="text" id="val-Q" style="flex:2" placeholder="Ej: 0,85"><select id="unit-Q" style="flex:1"><option value="ev">eV/at</option><option value="j_at">J/at</option><option value="j_mol">J/mol</option><option value="cal">cal/mol</option></select></div></div>
+            <div id="group-T" class="input-group"><label>Temperatura (T):</label><div style="display:flex; gap:5px;"><input type="text" id="val-T" style="flex:2" placeholder="Ej: 1000"><select id="unit-T" style="flex:1"><option value="C">°C</option><option value="K">K</option></select></div></div>
+            <button class="btn-main" onclick="ejecutar()">SIMULAR Y CALCULAR</button>
+            <div id="res-box" class="result-box" style="display:none;"></div>
+        </div>
+        <div class="visual-panel">
+            <div class="input-card">
+                <h4 style="margin:0 0 10px 0; text-align:center; color: var(--primary);">Microscopio de Energía Dinámica</h4>
+                <div class="viz-container"><div class="floor floor-left"></div><div class="floor floor-right"></div><div id="viz-mountain" class="energy-barrier"></div><div id="viz-q-line" class="q-line"></div><div id="atom-main"></div></div>
+                <div style="margin-top:15px;"><label>Éxito del Salto (Probabilidad):</label><div class="prob-container"><div id="prob-fill"></div></div><p id="prob-text" style="font-size:0.9em; text-align:center; font-weight:bold; color: var(--primary);">0 %</p></div>
+                <p id="viz-desc" style="font-size: 0.85em; color: #555; text-align: center; margin-top: 10px;">El átomo cian vibra térmicamente. Si su energía logra superar la línea roja punteada, el proceso ocurre con éxito.</p>
+            </div>
+            <div class="input-card" style="background:white;">
+                <div class="chart-wrapper"><canvas id="mainChart"></canvas></div>
+                <div class="interactive-controls"><div><label style="display:block; font-size:0.7em; font-weight:bold;">Temp (K):</label><input type="text" id="probe-t" placeholder="0,00"></div><div><label style="display:block; font-size:0.75em; font-weight:bold;">Resultado:</label><input type="text" id="probe-res" readonly style="background:#eee;"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="theory" class="section">
+    <h2 style="text-align: center; color: var(--primary); font-size: 2.5em; margin-bottom: 30px;">Compendio Técnico Interactivo</h2>
+    
+    <div class="theory-grid-nav">
+        <button class="theory-btn active-item" onclick="showTheory(1)">I. Fundamentos Térmicos</button>
+        <button class="theory-btn" onclick="showTheory(2)">II. Estado de Transición</button>
+        <button class="theory-btn" onclick="showTheory(3)">III. La Ecuación Maestra</button>
+        <button class="theory-btn" onclick="showTheory(4)">IV. Termodinámica: Vacancias</button>
+        <button class="theory-btn" onclick="showTheory(5)">V. Difusividad de Solutos</button>
+        <button class="theory-btn" onclick="showTheory(6)">VI. Cinética Química</button>
+        <button class="theory-btn" onclick="showTheory(7)">VII. Constante de Boltzmann</button>
+        <button class="theory-btn" onclick="showTheory(8)">VIII. Linealización de Datos</button>
+        <button class="theory-btn" onclick="showTheory(9)">IX. Estructura Cristalina</button>
+        <button class="theory-btn" onclick="showTheory(10)">X. Mecanismo de Difusión</button>
+        <button class="theory-btn" onclick="showTheory(11)">XI. Catálisis y Energía</button>
+        <button class="theory-btn" onclick="showTheory(12)">XII. Límites y Cuántica</button>
+    </div>
+
+    <div class="theory-display-area" id="theory-viewer">
+        
+        <div id="t1" class="theory-item show">
+            <h3>I. El Motor de la Materia: Fundamentos Térmicos</h3>
+            <p>Imagina que la materia no es algo estático, sino un baile frenético de partículas. La <b>Ley de Arrhenius</b>, formulada por el premio Nobel Svante Arrhenius en 1889, es la "partitura" que nos dice qué tan rápido se mueven y reaccionan esas partículas según el calor que reciben.</p>
+            <div style="margin: 20px 0; background-color: #e3f2fd; border-left: 5px solid #2196f3; padding: 25px; border-radius: 12px;">
+                <h4 style="color: #0d47a1; margin-top: 0;"> La Analogía del Salto de Altura</h4>
+                <p style="color: #1a237e;">Piensa en los procesos atómicos como un grupo de atletas intentando saltar una valla. 
+                <ul>
+                    <li>La <b>Valla</b> es la dificultad (Energía de Activación).</li>
+                    <li>El <b>Calor</b> es la energía o "impulso" que les das a los atletas.</li>
+                </ul>
+                Si el clima está frío, casi ninguno logra saltar. Pero si subes la temperatura, les das un "golpe de energía" y muchísimos más logran cruzarla por segundo.</p>
+            </div>
+            <h4>¿Por qué es una ley universal?</h4>
+            <p>Esta ley describe la dependencia de la velocidad con la temperatura en casi cualquier sistema físico o químico. Desde cómo se oxidan los metales en una fundición, hasta cómo se degrada un medicamento, todo sigue el ritmo de Arrhenius.</p>
+        </div>
+
+        <div id="t2" class="theory-item">
+            <h3>II. La Lucha Atómica: Estado de Transición y Barrera (Q)</h3>
+            <p>Para que un átomo se mueva de su sitio original a una vacancia vecina, debe realizar un esfuerzo físico real: debe "empujar" a sus vecinos para hacerse espacio.</p>
+            <div style="display: flex; gap: 20px; align-items: center; margin: 25px 0; background: #fffde7; padding: 25px; border-radius: 12px; border: 1px solid #fff59d;">
+                <div style="flex: 1;">
+                    <h4 style="color: #f57f17; margin-top: 0;"> El Pico de la Montaña</h4>
+                    <p>Ese momento crítico donde el átomo está apretado entre sus vecinos y en su punto de máxima inestabilidad se conoce como <b>Estado de Transición</b>.</p>
+                    <p>La <b>Energía de Activación (Q)</b> es el tamaño de ese "peaje" energético que el átomo debe pagar para pasar por el canal estrecho.</p>
+                </div>
+            </div>
+            <h4>¿De qué depende la altura de la barrera Q?</h4>
+            <table class="theory-table">
+                <tr style="background: #f1f4f9;"><th>Factor</th><th>Efecto en Q</th></tr>
+                <tr><td><b>Tamaño Atómico</b></td><td>Átomos grandes distorsionan más la red, aumentando Q.</td></tr>
+                <tr><td><b>Estructura Cristalina</b></td><td>Estructuras compactas (FCC) suelen tener barreras más altas que las abiertas (BCC).</td></tr>
+                <tr><td><b>Enlaces Químicos</b></td><td>Enlaces más fuertes requieren más energía para ser distorsionados.</td></tr>
+            </table>
+            <p style="margin-top: 20px; border-left: 4px solid #ff5252; padding-left: 15px; font-style: italic;"><b>Dato:</b> Sin esta barrera Q, todos los materiales serían inestables y se desintegrarían al instante.</p>
+        </div>
+
+        <div id="t3" class="theory-item">
+            <h3>III. La Ecuación Maestra: El Corazón Matemático</h3>
+            <p>La Ley de Arrhenius es una función exponencial negativa que describe la probabilidad estadística de que un evento ocurra.</p>
+            <div class="theory-formula">k = A · e<sup>(-Q / RT)</sup></div>
+            <h4>Análisis de Componentes:</h4>
+            <ul>
+                <li><b>k (Velocidad / Concentración):</b> Resultado final; qué tan rápido ocurre el proceso o cuántos defectos hay.</li>
+                <li><b>A (Factor de Frecuencia):</b> Número total de intentos que hace un átomo para saltar por segundo.</li>
+                <li><b>e<sup>(-Q / RT)</sup>:</b> Representa la <b>fracción de éxito</b>. Nos dice qué porcentaje de esos intentos logran superar la barrera.</li>
+            </ul>
+            <h4>El Proceso de Linealización:</h4>
+            <div style="background: #f8f9fa; padding: 25px; border-radius: 12px; font-family: monospace; border: 1px dashed #ccc; margin: 20px 0;">
+                <ol>
+                    <li><b>k = A · e<sup>(-Q / RT)</sup></b></li>
+                    <li><b>ln(k) = ln(A · e<sup>(-Q / RT)</sup>)</b></li>
+                    <li><b style="color: #d32f2f;">ln(k) = ln(A) - (Q/R) · (1/T)</b></li>
+                </ol>
+            </div>
+            <p>Esta forma tiene la estructura de una línea recta <b>y = b + mx</b>.</p>
+        </div>
+
+        <div id="t4" class="theory-item">
+            <h3>IV. El Corazón de los Metales: Vacancias y Termodinámica</h3>
+            <p>Un cristal "perfecto" es una imposibilidad termodinámica. Los metales necesitan el "desorden" para existir en equilibrio.</p>
+            <div class="theory-formula">N<sub>v</sub> = N₀ · e<sup>(-Q<sub>v</sub> / k<sub>B</sub>T)</sup></div>
+            <div style="background: #e8f5e9; padding: 25px; border-radius: 15px; border-left: 5px solid #4caf50; margin: 20px 0;">
+                <h4 style="color: #2e7d32; margin-top: 0;"> ¿Qué es una Vacancia?</h4>
+                <p>Es un "hueco" en la red donde falta un átomo. Son las que permiten que los metales se puedan soldar, alear y transformar.</p>
+            </div>
+            <h4>La Batalla Termodinámica</h4>
+            <ul>
+                <li><b>Costo (Entalpía):</b> Crear un hueco cuesta energía (Qv).</li>
+                <li><b>Beneficio (Entropía):</b> A medida que sube T, el sistema prefiere el desorden, compensando el costo de romper enlaces.</li>
+            </ul>
+            <table class="theory-table">
+                <tr style="background: #f1f8e9;"><th>Fenómeno</th><th>Relación con Arrhenius</th></tr>
+                <tr><td><b>Tratamientos Térmicos</b></td><td>A alta T, las vacancias abundan, permitiendo que el Carbono se mueva.</td></tr>
+                <tr><td><b>Sinterización</b></td><td>El movimiento de vacancias permite que polvos metálicos se unan.</td></tr>
+                <tr><td><b>Fluencia (Creep)</b></td><td>El exceso de vacancias facilita que el metal se deforme lentamente bajo carga.</td></tr>
+            </table>
+        </div>
+
+        <div id="t5" class="theory-item">
+            <h3>V. El Viaje Atómico: Difusividad en Sólidos</h3>
+            <p>La difusión es el transporte de materia mediante el movimiento atómico. El coeficiente de difusión (D) es "hijo" de la ecuación de Arrhenius.</p>
+            <div class="theory-formula">D = D₀ · e<sup>(-Q / RT)</sup></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 25px 0;">
+                <div style="background: #f1f8e9; padding: 20px; border-radius: 12px; border-left: 5px solid #8bc34a;">
+                    <h4 style="color: #33691e; margin-top: 0;"> Intersticial</h4>
+                    <p style="font-size: 0.9em;">Átomos pequeños (Carbono) se deslizan por huecos. Viaje rápido y baja energía.</p>
+                </div>
+                <div style="background: #fff3e0; padding: 20px; border-radius: 12px; border-left: 5px solid #ff9800;">
+                    <h4 style="color: #e65100; margin-top: 0;"> Por Vacancia</h4>
+                    <p style="font-size: 0.9em;">Átomos grandes esperan huecos. Proceso lento y costoso energéticamente.</p>
+                </div>
+            </div>
+            <table class="theory-table">
+                <thead><tr style="background: #1a237e; color: white;"><th>Soluto en Solvente</th><th>Estructura</th><th>D₀ (m²/s)</th><th>Q (kJ/mol)</th><th>Dificultad</th></tr></thead>
+                <tbody>
+                    <tr><td><b>C en Hierro-α</b></td><td style="text-align: center;">BCC</td><td>1.1 x 10⁻⁶</td><td style="color: #4caf50; font-weight: bold;">80</td><td style="font-style: italic;">Muy Fácil</td></tr>
+                    <tr><td><b>C en Hierro-γ</b></td><td style="text-align: center;">FCC</td><td>2.3 x 10⁻⁵</td><td style="color: #ff9800; font-weight: bold;">148</td><td style="font-style: italic;">Media</td></tr>
+                    <tr><td><b>Ni en Cobre</b></td><td style="text-align: center;">FCC</td><td>2.7 x 10⁻⁴</td><td style="color: #b71c1c; font-weight: bold;">236</td><td style="font-style: italic;">Extrema</td></tr>
+                </tbody>
+            </table>
+            <div style="margin-top: 20px; border-left: 4px solid #1a237e; padding-left: 15px; background: #e8eaf6; padding: 15px; border-radius: 0 10px 10px 0;">
+                <h4 style="margin-top: 0; color: #1a237e;"> El Gran Hallazgo: ¿BCC o FCC?</h4>
+                <p>El Carbono se mueve más rápido en el Hierro BCC que en el FCC porque la estructura <b>BCC es menos compacta</b>, ofreciendo menos resistencia al paso.</p>
+            </div>
+        </div>
+
+        <div id="t6" class="theory-item">
+            <h3>VI. El Caos Ordenado: Cinética Química y Colisiones</h3>
+            <p>Para que dos sustancias reaccionen, las moléculas deben <b>chocar entre sí</b> con un propósito definido.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 25px 0;">
+                <div style="background: #fff3e0; padding: 20px; border-radius: 12px; border-left: 5px solid #ff9800;">
+                    <h4 style="color: #e65100; margin-top: 0;"> Energía de Choque</h4>
+                    <p style="font-size: 0.9em;">Deben golpearse con fuerza superior a <b>Q</b>. Si el golpe es débil, simplemente rebotan.</p>
+                </div>
+                <div style="background: #e1f5fe; padding: 20px; border-radius: 12px; border-left: 5px solid #03a9f4;">
+                    <h4 style="color: #01579b; margin-top: 0;"> Factor Estérico (A)</h4>
+                    <p style="font-size: 0.9em;">Deben chocar en la <b>orientación correcta</b>. El factor <b>A</b> incluye esta probabilidad geométrica.</p>
+                </div>
+            </div>
+            <div style="background: #f1f4f9; padding: 20px; border-radius: 10px; margin: 15px 0;">
+                <p><b>Regla de los 10°C:</b> Un incremento de solo 10°C duplica o triplica la velocidad de reacción. No porque haya más choques, sino porque la fracción de moléculas con energía suficiente crece explosivamente.</p>
+            </div>
+            <table class="theory-table">
+                <thead><tr style="background: #455a64; color: white;"><th>Componente Químico</th><th>Significado en Arrhenius</th></tr></thead>
+                <tbody>
+                    <tr><td><b>Concentración</b></td><td>Aumenta el número de intentos (Factor A).</td></tr>
+                    <tr><td><b>Catalizadores</b></td><td>Bajan la barrera energética (Reduce Q).</td></tr>
+                    <tr><td><b>Temperatura</b></td><td>Aumenta la "fuerza" de cada choque (Termino exponencial).</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="t7" class="theory-item">
+            <h3>VII. La Escala Atómica: La Constante de Boltzmann (k<sub>B</sub>)</h3>
+            <p>La constante de Boltzmann traduce la temperatura en energía cinética real para cada partícula individual.</p>
+            <div style="background: #e1f5fe; padding: 25px; border-radius: 15px; border-left: 5px solid #0288d1; margin: 20px 0;">
+                <h4 style="color: #01579b; margin-top: 0;"> ¿Cuándo se debe usar?</h4>
+                <p>Exclusivamente cuando la <b>Energía de Activación (Q)</b> se expresa por partícula, usualmente en <b>eV/átomo</b> o <b>J/átomo</b>.</p>
+            </div>
+            <table class="theory-table">
+                <thead><tr style="background: #0288d1; color: white;"><th>Unidad de Q</th><th>Valor de k<sub>B</sub></th><th>Aplicación Común</th></tr></thead>
+                <tbody>
+                    <tr><td><b>eV / átomo</b></td><td style="font-family: monospace;">8.617 x 10⁻⁵ eV/K</td><td>Vacancias y semiconductores.</td></tr>
+                    <tr><td><b>Joules / átomo</b></td><td style="font-family: monospace;">1.380 x 10⁻²³ J/K</td><td>Cálculos físicos fundamentales.</td></tr>
+                </tbody>
+            </table>
+            <div style="margin-top: 25px; background: #fff9c4; padding: 20px; border-radius: 12px; border: 1px solid #fbc02d;">
+                <h4 style="color: #afa100; margin-top: 0;"> El Error Crítico</h4>
+                <p>Nunca mezcles <b>k<sub>B</sub></b> con energías en <b>J/mol</b>. Si trabajas con moles, usa la Constante Universal de los Gases (R). Recuerda: <b>R = k<sub>B</sub> × N<sub>A</sub></b>.</p>
+            </div>
+        </div>
+
+        <div id="t8" class="theory-item">
+            <h3>VIII. Del Laboratorio a la Realidad: Linealización de Datos</h3>
+            <p>En el laboratorio medimos la velocidad a diferentes temperaturas y luego "obligamos" a esos datos a formar una línea recta.</p>
+            <div style="background: #ffffff; padding: 20px; border-radius: 12px; border: 2px solid var(--primary); margin: 25px 0; text-align: center;">
+                <h4 style="color: var(--primary); margin-top: 0;"> El Método Gráfico de Arrhenius</h4>
+                <p>Si graficamos <b>ln(k)</b> frente al inverso de la temperatura <b>(1/T)</b>, obtenemos una línea recta exacta.</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+                <div style="background: #fff3e0; padding: 20px; border-radius: 12px; border-left: 5px solid #ff9800;">
+                    <h4 style="color: #e65100; margin-top: 0;"> La Pendiente (m)</h4>
+                    <p style="font-size: 0.95em;">Representa <b>-Q / R</b>. Cuanto más inclinada esté la recta, mayor es la energía de activación del material.</p>
+                </div>
+                <div style="background: #e8eaf6; padding: 20px; border-radius: 12px; border-left: 5px solid #3f51b5;">
+                    <h4 style="color: #1a237e; margin-top: 0;"> El Intercepto (b)</h4>
+                    <p style="font-size: 0.95em;">Representa <b>ln(A)</b>. Da el Factor de Frecuencia o número total de intentos de salto.</p>
+                </div>
+            </div>
+            <p style="margin-top: 25px; background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 5px solid #4caf50;">
+                <b> Aplicación:</b> Determina si un acero requiere más energía para ser cementado, optimizando el combustible en hornos.
+            </p>
+        </div>
+
+        <div id="t9" class="theory-item">
+            <h3>IX. Arquitectura Atómica: El Rol de la Estructura Cristalina</h3>
+            <p>La estructura cristalina actúa como el mapa de una ciudad: algunas tienen avenidas amplias (BCC) y otras son callejones estrechos y congestionados (FCC).</p>
+            <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 25px; margin: 25px 0; align-items: center;">
+                <div style="background: #e8eaf6; padding: 20px; border-radius: 12px; border-top: 5px solid #3f51b5;">
+                    <h4 style="color: #1a237e; margin-top: 0;"> Factor de Empaquetamiento</h4>
+                    <p style="font-size: 0.9em;">Medida de qué tan "apretados" están los átomos. A menor factor, más huecos disponibles.</p>
+                </div>
+                <div>
+                    <h4>El Caso del Hierro:</h4>
+                    <ul>
+                        <li><b>Hierro-α (BCC):</b> Estructura abierta. El Carbono viaja velozmente (Q baja).</li>
+                        <li><b>Hierro-γ (FCC):</b> Estructura compacta. El Carbono debe luchar para abrirse paso (Q alta).</li>
+                    </ul>
+                </div>
+            </div>
+            <table class="theory-table">
+                <thead><tr style="background: #283593; color: white;"><th>Estructura</th><th>Densidad de Empaque</th><th>Efecto en la Difusión</th></tr></thead>
+                <tbody>
+                    <tr><td><b>BCC</b></td><td>68% (Más espacio libre)</td><td style="color: #2e7d32; font-weight: bold;">Camino Rápido</td></tr>
+                    <tr><td><b>FCC</b></td><td>74% (Muy compacta)</td><td style="color: #c62828; font-weight: bold;">Camino Lento</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="t10" class="theory-item">
+            <h3>X. Rutas de Difusión: Intersticial vs. Por Vacancia</h3>
+            <p>Dependiendo de su tamaño, los átomos eligen una de dos "carreteras", definiendo su Energía de Activación (Q).</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 25px 0;">
+                <div style="background: #e3f2fd; padding: 25px; border-radius: 15px; border-left: 5px solid #2196f3;">
+                    <h4 style="color: #0d47a1; margin-top: 0;"> Mecanismo Intersticial</h4>
+                    <p>Átomos pequeños (Carbono, Nitrógeno) se filtran a través de los huecos. Energía Q muy baja y velocidad extremadamente rápida.</p>
+                </div>
+                <div style="background: #f3e5f5; padding: 25px; border-radius: 15px; border-left: 5px solid #9c27b0;">
+                    <h4 style="color: #4a148c; margin-top: 0;"> Mecanismo por Vacancia</h4>
+                    <p>Átomos grandes (Níquel, Cobre) solo se mueven si hay un asiento vacío. Energía Q muy alta y velocidad lenta.</p>
+                </div>
+            </div>
+            <table class="theory-table">
+                <thead><tr style="background: #1a237e; color: white;"><th>Tipo de Difusión</th><th>Rango Típico de Q</th><th>Ejemplo Industrial</th></tr></thead>
+                <tbody>
+                    <tr><td><b>Intersticial</b></td><td style="font-weight: bold; color: #2e7d32;">0.5 - 1.5 eV</td><td>Cementación de aceros.</td></tr>
+                    <tr><td><b>Por Vacancia</b></td><td style="font-weight: bold; color: #c62828;">2.0 - 4.5 eV</td><td>Autodifusión y aleaciones masivas.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="t11" class="theory-item">
+            <h3>XI. Ingeniería de la Eficiencia: Catálisis y Barreras Bajas</h3>
+            <p>La <b>Catálisis</b> permite acelerar procesos químicos o metalúrgicos sin aumentar la temperatura.</p>
+            <div style="background: #e0f2f1; padding: 25px; border-radius: 15px; border-left: 5px solid #009688; margin: 20px 0;">
+                <h4 style="color: #004d40; margin-top: 0;"> El Túnel en la Montaña</h4>
+                <p>Imagine que debe cruzar la montaña (Barrera Q):
+                <ul>
+                    <li><b>Sin Catalizador:</b> Escala hasta la cima (alto consumo de calor).</li>
+                    <li><b>Con Catalizador:</b> Construye un <b>túnel</b> a través de la montaña. El destino es el mismo, pero el esfuerzo es drásticamente menor.</li>
+                </ul>
+                </p>
+            </div>
+            <div style="display: flex; justify-content: center; align-items: center; gap: 30px; margin: 25px 0; background: #fafafa; padding: 20px; border-radius: 12px; border: 1px dashed #009688;">
+                <div style="text-align: center;"><span style="font-size: 0.8em; color: #666;">Proceso Natural</span><div style="font-family: serif; font-size: 1.5em;">k = A · e<sup>(-<b style="color: #c62828;">Q<sub>alto</sub></b> / RT)</sup></div></div>
+                <div style="font-size: 2em; color: #009688;">➔</div>
+                <div style="text-align: center;"><span style="font-size: 0.8em; color: #666;">Proceso Catalizado</span><div style="font-family: serif; font-size: 1.5em;">k = A · e<sup>(-<b style="color: #2e7d32;">Q<sub>bajo</sub></b> / RT)</sup></div></div>
+            </div>
+        </div>
+
+        <div id="t12" class="theory-item">
+            <h3>XII. Las Fronteras de la Ley: Límites y Fenómenos Cuánticos</h3>
+            <p>La Ecuación de Arrhenius es sólida, pero en condiciones extremas la física clásica se rompe.</p>
+            <div style="background: #fce4ec; padding: 25px; border-radius: 15px; border-left: 5px solid #e91e63; margin: 20px 0;">
+                <h4 style="color: #880e4f; margin-top: 0;"> El Efecto Túnel Cuántico</h4>
+                <p>A temperaturas extremadamente bajas, o con átomos muy ligeros, los átomos pueden aparecer al otro lado de la barrera Q sin tener la energía para escalarla. Es como si atravesaran la montaña por magia, haciendo el proceso más rápido de lo que Arrhenius predice.</p>
+            </div>
+            <table class="theory-table">
+                <thead><tr style="background: #ad1457; color: white;"><th>Escenario Crítico</th><th>Por qué Arrhenius no basta</th></tr></thead>
+                <tbody>
+                    <tr><td><b>Vidrios y Polímeros</b></td><td>Cerca de la transición vítrea, la viscosidad no es exponencial. Se usa VFT.</td></tr>
+                    <tr><td><b>Altas Energías</b></td><td>Si el calor destruye la red cristalina, la noción de "salto" desaparece.</td></tr>
+                    <tr><td><b>Difusión Superficial</b></td><td>En bordes de grano, la energía Q es tan baja que los átomos fluyen como un líquido.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="manual" class="section">
+    <div class="manual-section-box">
+        <div style="text-align: center; margin-bottom: 40px; border-bottom: 3px solid var(--primary); padding-bottom: 20px;">
+            <h2 style="color: var(--primary); font-size: 2.8em; margin-bottom: 10px;">Guía Maestra de Operación</h2>
+            <p style="color: #666; font-size: 1.1em;">Protocolo Técnico para el Análisis de Cinética Térmica y Difusividad Atómica.</p>
+        </div>
+
+        <div class="manual-step-card">
+            <h4><span>1</span> Configuración del Dominio Científico</h4>
+            <p>Es imperativo seleccionar el <b>Contexto</b> adecuado antes de cualquier ingreso de datos:</p>
+            <ul>
+                <li><b>Metalurgia:</b> Orientado a vacancias. La variable resultante se interpreta como concentración de defectos (N).</li>
+                <li><b>Cinética Química:</b> Optimizado para reacciones, interpretando el resultado como constante de velocidad (k).</li>
+            </ul>
+        </div>
+
+        <div class="manual-step-card" style="border-left-color: var(--primary);">
+            <h4><span>2</span> El Método de Resolución Dinámica</h4>
+            <p>El software utiliza un algoritmo inteligente. El protocolo es:</p>
+            <ol>
+                <li>Seleccione en el menú desplegable la variable que desconoce.</li>
+                <li>El sistema bloqueará visualmente ese campo dejándolo en blanco.</li>
+                <li>Rellene los demás campos. El software calculará automáticamente el valor faltante.</li>
+            </ol>
+            <div class="warning-instruction"><b> Protocolo UIS:</b> No intente forzar valores en campos bloqueados. Si desea cambiar la incógnita, selecciónela de nuevo en el menú superior.</div>
+        </div>
+
+        <div class="manual-step-card" style="border-left-color: var(--success);">
+            <h4><span>3</span> Rigor en la Notación y Unidades</h4>
+            <ul>
+                <li><b>Notación Científica:</b> Use el formato <code>8e28</code> para valores grandes o <code>1.5e-11</code> para pequeños.</li>
+                <li><b>Separador Decimal:</b> Utilice exclusivamente el <b>punto (.)</b>. El uso de comas puede invalidar la cadena matemática.</li>
+                <li><b>Constantes:</b> Si ingresa energía en <b>eV/at</b>, el sistema aplica la constante de Boltzmann. Si usa <b>J/mol</b>, aplica la constante de los gases (R).</li>
+            </ul>
+        </div>
+
+        <div class="manual-step-card" style="border-left-color: var(--danger);">
+            <h4><span>4</span> Interpretación del Microscopio de Energía</h4>
+            <p>El microscopio es una validación visual de la física del proceso:</p>
+            <ul>
+                <li><b>Vibración (Temperatura):</b> A mayor T, mayor amplitud de salto del átomo cian.</li>
+                <li><b>Código de Éxito:</b> Si el átomo vibra y brilla en <b>Verde</b>, superó la barrera. Si permanece <b>Cian</b>, el proceso está térmicamente inactivo.</li>
+            </ul>
+        </div>
+
+        <div class="manual-step-card" style="border-left-color: var(--secondary);">
+            <h4><span>5</span> Herramienta de Análisis Sensible </h4>
+            <p>Debajo de la gráfica encontrará casillas de "lectura rápida" para estudios de sensibilidad sin reiniciar el simulador:</p>
+            <ol>
+                <li>Ingrese una temperatura cualquiera en Kelvin.</li>
+                <li>Obtendrá instantáneamente el valor calculado para esa temperatura exacta.</li>
+            </ol>
+            <div class="pro-instruction">Ideal para encontrar el punto exacto de activación térmica sin iterar manualmente.</div>
+        </div>
+    </div>
+</div>
+
+<footer style="background-color: var(--primary); color: white; text-align: center; padding: 20px; margin-top: auto; font-size: 0.9em;">
+    <p>SimuMetalurgia © 2026 <br><br> Desarrollo: <span>Andrés Felipe Caro Miranda & José Gabriel Franco Correa</span>  |  Asesoría: <span>Pro. Ana Emilse Coy Echeverria & Prof. Carlos Andrés Galán Pinilla.</span><br> Universidad Industrial de Santander | UIS</footer></p>
+</footer>
+
+<script>
+    let chart; let vibInterval; let curA, curQ, curR, curT;
+    const K_B = { 'ev': 8.6173e-5, 'j_at': 1.3806e-23 };
+    const R_GAS = { 'j_mol': 8.314, 'cal': 1.987 };
+
+    function showSection(id) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        window.scrollTo(0,0);
+    }
+
+    function showTheory(index) {
+        document.querySelectorAll('.theory-item').forEach(item => {
+            item.classList.remove('show');
+        });
+        document.querySelectorAll('.theory-btn').forEach(btn => {
+            btn.classList.remove('active-item');
+        });
+        
+        document.getElementById('t' + index).classList.add('show');
+        document.querySelectorAll('.theory-btn')[index - 1].classList.add('active-item');
+    }
+
+    function updateContext() {
+        const ctx = document.getElementById('context').value;
+        document.getElementById('label-k').innerText = (ctx === 'metal') ? 'Concentración (N):' : 'Velocidad (k):';
+        document.getElementById('label-A').innerText = (ctx === 'metal') ? 'Sitios Totales (N₀):' : 'Factor Frecuencia (A):';
+        
+        if (chart) {
+            chart.options.scales.y.title.text = (ctx === 'metal') ? 'Concentración de Defectos (N)' : 'Constante de Velocidad (k)';
+            chart.update();
+        }
+    }
+
+    function updateUI() {
+        const inc = document.getElementById('unknown').value;
+        ['k', 'A', 'Q', 'T'].forEach(v => document.getElementById('group-'+v).style.display = (v === inc ? 'none' : 'flex'));
+    }
+
+    function parse(id) {
+        let v = document.getElementById(id).value.replace(',', '.');
+        return v === "" ? null : parseFloat(v);
+    }
+
+    function animarVibracion(tempK, hBarrera) {
+        if(vibInterval) clearInterval(vibInterval);
+        const atom = document.getElementById('atom-main');
+        const amplitud = Math.min(210, Math.max(10, (tempK / 1500) * 190));
+        vibInterval = setInterval(() => {
+            const offset = Math.abs(Math.sin(Date.now() / 135)) * amplitud;
+            const pos = 45 + offset;
+            atom.style.bottom = pos + "px";
+            if(pos >= (hBarrera + 45)) {
+                atom.style.background = "#4caf50"; atom.style.boxShadow = "0 0 25px #4caf50";
+            } else {
+                atom.style.background = "#00e5ff"; atom.style.boxShadow = "0 0 15px #00e5ff";
+            }
+        }, 20);
+    }
+
+    function ejecutar() {
+        try {
+            const inc = document.getElementById('unknown').value;
+            const unitQ = document.getElementById('unit-Q').value;
+            const R = (K_B[unitQ] || R_GAS[unitQ]);
+            let k = parse('val-k'); let A = parse('val-A'); let Q = parse('val-Q'); let T = parse('val-T');
+            if(document.getElementById('unit-T').value === 'C' && T !== null) T += 273.15;
+            
+            let res;
+            if(inc === 'k') { res = A * Math.exp(-Q / (R * T)); k = res; }
+            else if(inc === 'A') { res = k / Math.exp(-Q / (R * T)); A = res; }
+            else if(inc === 'Q') { res = -Math.log(k / A) * R * T; Q = res; }
+            else if(inc === 'T') { res = -Q / (R * Math.log(k / A)); T = res; }
+
+            const probPct = Math.exp(-Q / (R * T)) * 100;
+            let msg = probPct < 1e-8 ? " BLOQUEADO" : probPct < 0.1 ? " LENTO" : " ACTIVO";
+            document.getElementById('prob-fill').style.width = Math.min(100, probPct) + "%";
+            document.getElementById('prob-text').innerHTML = `${probPct.toExponential(3)} % <br><small>${msg}</small>`;
+
+            let hVis = (unitQ === 'ev' || unitQ === 'j_at') ? Q * 50 : Q / 1200;
+            const hPx = Math.min(200, Math.max(20, hVis));
+            document.getElementById('viz-mountain').style.height = hPx + "px";
+            document.getElementById('viz-q-line').style.bottom = (hPx + 45) + "px";
+            document.getElementById('res-box').style.display = 'block';
+            document.getElementById('res-box').innerHTML = `Resultado Final:<br>${res.toExponential(4).replace('.',',')}`;
+
+            curA = A; curQ = Q; curR = R; curT = T;
+            animarVibracion(T, hPx);
+            updateChart(A, Q, R, T);
+        } catch(e) { alert("Verifica los datos."); }
+    }
+
+    function updateChart(A, Q, R, targetT) {
+        const temps = []; const vals = [];
+        const startT = Math.max(100, targetT - 600); const endT = targetT + 600;
+        const step = (endT - startT) / 50;
+        
+        for(let t = startT; t <= endT; t += step) {
+            temps.push(t.toFixed(0)); vals.push(A * Math.exp(-Q / (R * t)));
+        }
+        
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        if(chart) chart.destroy();
+
+        let yLabel = document.getElementById('context').value === 'metal' ? 'Concentración de Defectos (N)' : 'Constante de Velocidad (k)';
+
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { 
+                labels: temps, 
+                datasets: [{ 
+                    label: 'Perfil Cinético', 
+                    data: vals, 
+                    borderColor: '#1a237e', 
+                    borderWidth: 4, 
+                    fill: true, 
+                    backgroundColor: 'rgba(0, 229, 255, 0.05)', 
+                    pointRadius: 0 
+                }] 
+            },
+            options: { 
+                devicePixelRatio: 2, 
+                responsive: true, 
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Dependencia Térmica (Arrhenius)',
+                        color: '#1a237e',
+                        font: { size: 16, weight: 'bold', family: 'Segoe UI' }
+                    },
+                    legend: { display: false }
+                },
+                scales: { 
+                    x: {
+                        title: { display: true, text: 'Temperatura (K)', color: '#333', font: { weight: 'bold' } }
+                    },
+                    y: { 
+                        type: 'logarithmic',
+                        title: { display: true, text: yLabel, color: '#333', font: { weight: 'bold' } }
+                    } 
+                } 
+            }
+        });
+    }
+
+    document.getElementById('probe-t').oninput = function() {
+        let tVal = parseFloat(this.value.replace(',', '.'));
+        if (!isNaN(tVal) && curA !== undefined) {
+            let res = curA * Math.exp(-curQ / (curR * tVal));
+            document.getElementById('probe-res').value = res.toExponential(3).replace('.', ',');
+        }
+    };
+
+    window.onload = () => { updateUI(); updateContext(); };
+</script>
+</body>
+</html>
